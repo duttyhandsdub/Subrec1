@@ -1,0 +1,92 @@
+/* LICENSE & DETAILS
+   ==================================================
+
+	Theme Name: Neighborhood Child Theme
+	Theme URI: http://neighborhood.swiftideas.net
+	Description: A Retina Responsive Multi-Purpose WordPress Theme - Designed & Developed by Swift Ideas ( www.swiftideas.net )
+	License: GNU General Public License version 3.0
+	License URI: http://www.gnu.org/licenses/gpl-3.0.html
+	Template: neighborhood
+	Version: 1.0
+	Author: Swift Ideas
+	Author URI: www.swiftideas.net
+
+	All files, unless otherwise stated, are released under the GNU General Public License
+	version 3.0 (http://www.gnu.org/licenses/gpl-3.0.html)
+
+   ==================================================
+*/
+
+
+/* --------------------------------------------
+	CHILD THEME CSS
+-------------------------------------------- */
+
+.jheadbor {margin-bottom: 30px !important;}
+.wf-loading body{
+visibility:visible !important;
+}
+.jborder {border-bottom: 1px solid #e2e2e2; margin-bottom: 30px !important;}
+.headmarg {margin-top: 44px;}
+h6 {color: #79AE9A !important; float: right;}
+.header-right{float: right;}
+.headtel{margin-top: 30px;}
+p.jimpacttext{font-size: 24px; line-height: 34px;}
+h3.jimpacttext{font-size: 28px; line-height: 36px;}
+.jcolourtoppad{padding-top: 50px;}
+.jlistcolour ul li{color: #fff;}
+.jimgbotpad {margin-bottom: -20px;}
+.jfoottext {font-size: 12px;}
+.sf-icon {color: #e8e8e8 !important;}
+
+.wpcf7 input[type="tel"], .wpcf7 input[type="text"], .wpcf7 input[type="email"], .wpcf7 select[type="select"], .wpcf7 textarea {
+padding-top: 8px;
+padding-bottom: 8px;    
+margin-bottom: 20px;
+    margin-top: 6px;
+    width: 95%;
+}
+
+.wpcf7 select {height: 40px;}
+.wpcf7 input.wpcf7-submit[type="submit"]{margin-top:20px;}
+
+input[type="tel"] {
+    background: #f7f7f7 ;
+    border-color: #e4e4e4;
+}
+
+input[type="checkbox"] {
+    margin: 0px 0px 0px 0px;
+}
+
+.spb_latest_tweets_widget {
+    padding-top: 0px; margin-top: -17px;
+}
+
+textarea, input[type="text"], input[type="password"], input[type="datetime"], input[type="datetime-local"], input[type="date"], input[type="month"], input[type="time"], input[type="week"], input[type="number"], input[type="email"], select, input[type="url"], input[type="search"], input[type="tel"], input[type="color"], .uneditable-input {
+    box-shadow: none;
+    transition: border 0.2s linear 0s, box-shadow 0.2s linear 0s;
+	border-radius: 0px;
+}
+
+
+
+@media only screen and (max-width: 979px) {
+
+.headmarg{margin-top: 10px;}	
+
+}
+
+ @media only screen and (max-width: 769px) {
+
+.rev_slider_wrapper { display:none; }
+h2{font-size: 24px !important; line-height:34px !important;}        
+h3.jimpacttext{font-size: 24px !important; line-height:34px !important;}
+
+}
+
+
+
+
+
+

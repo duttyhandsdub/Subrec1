@@ -1,0 +1,44 @@
+<?xml version='1.0'?><?xml-stylesheet type='text/xsl' href='https://whois.arin.net/xsl/website.xsl' ?>
+<nets xmlns="https://www.arin.net/whoisrws/core/v1" xmlns:ns2="https://www.arin.net/whoisrws/rdns/v1"
+      xmlns:ns3="https://www.arin.net/whoisrws/netref/v2"
+      inaccuracyReportUrl="https://www.arin.net/public/whoisinaccuracy/index.xhtml"
+      termsOfUse="https://www.arin.net/whois_tou.html">
+    <limitExceeded limit="256">false</limitExceeded>
+    <net inaccuracyReportUrl="https://www.arin.net/public/whoisinaccuracy/index.xhtml"
+         termsOfUse="https://www.arin.net/whois_tou.html">
+        <registrationDate>2002-11-23T00:00:00-05:00</registrationDate>
+        <ref>https://whois.arin.net/rest/net/NET-82-0-0-0-1</ref>
+        <ns2:delegations inaccuracyReportUrl="https://www.arin.net/public/whoisinaccuracy/index.xhtml"
+                         termsOfUse="https://www.arin.net/whois_tou.html"/>
+        <endAddress>82.255.255.255</endAddress>
+        <handle>NET-82-0-0-0-1</handle>
+        <name>82-RIPE</name>
+        <netBlocks>
+            <netBlock>
+                <cidrLength>8</cidrLength>
+                <endAddress>82.255.255.255</endAddress>
+                <description>Allocated to RIPE NCC</description>
+                <type>RN</type>
+                <startAddress>82.0.0.0</startAddress>
+            </netBlock>
+        </netBlocks>
+        <pocs inaccuracyReportUrl="https://www.arin.net/public/whoisinaccuracy/index.xhtml"
+              termsOfUse="https://www.arin.net/whois_tou.html"/>
+        <resources inaccuracyReportUrl="https://www.arin.net/public/whoisinaccuracy/index.xhtml"
+                   termsOfUse="https://www.arin.net/whois_tou.html">
+            <limitExceeded limit="256">false</limitExceeded>
+            <resource description="Web Page" media_type="text/html" rel="SELF"
+                      url="https://apps.db.ripe.net/search/query.html"/>
+            <resource description="Whois" media_type="application/x-whois" rel="SELF" url="whois.ripe.net"/>
+        </resources>
+        <orgRef handle="RIPE" name="RIPE Network Coordination Centre">https://whois.arin.net/rest/org/RIPE</orgRef>
+        <comment>
+            <line number="0">These addresses have been further assigned to users in</line>
+            <line number="1">the RIPE NCC region. Contact information can be found in</line>
+            <line number="2">the RIPE database at https://www.ripe.net/whois</line>
+        </comment>
+        <startAddress>82.0.0.0</startAddress>
+        <updateDate>2004-03-16T08:52:33-05:00</updateDate>
+        <version>4</version>
+    </net>
+</nets>

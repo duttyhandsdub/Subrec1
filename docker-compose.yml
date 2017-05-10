@@ -1,0 +1,22 @@
+app:
+  build: .
+  env_file:
+    - docker/.env
+  ports:
+    - "80:80"
+  volumes:
+    - ./src:/var/www/html
+    - ./docker/wp-config.php:/var/www/html/wp-config.php
+ngrok:
+    image: fnichol/ngrok
+    environment:
+      - HTTP_PORT=apptarget:80
+    links:
+      - app:apptarget
+    ports:
+      - "4040:4040"
+mail:
+  image: "mailhog/mailhog:latest"
+  ports:
+    - "1025:1025"
+    - "8025:8025"
