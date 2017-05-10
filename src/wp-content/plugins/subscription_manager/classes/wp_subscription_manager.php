@@ -566,23 +566,19 @@ class WP_Subscription_Manger{
 		update_user_meta($user_id, "subscription_status", "active");
 		update_user_meta($user_id, "subscription_end", $date_to_process);
 		$this->update_term_length($term, $user_id);
-		$radius_user_id = insert_into_radius($user, $first_name, $last_name, $password, $term, $today, $date_to_process, $amount);
 		update_user_meta($user->ID, "subscription_password", $password);
-		update_user_meta($user->ID, "radius_user_id", $radius_user_id);
 		$to = $user->user_email;
-		$subject = "VPN View Free Subscription";
+		$subject = "";
 
 		$message = get_email_header();
 		$message .= "<p>Hi ".$first_name.",</p>
-		<p>You have been granted a <strong>Free ".ucwords($post_term)." subscription</strong> to VPN View.</p>
+		<p>You have been granted a <strong>Free ".ucwords($post_term)." subscription</strong>.</p>
 		<p>Your subscription details are as follows:</p>
 		<p>Subscription Term: ".ucwords($post_term)."</p>
 		<p>Subscription Amount: £ <strong>FREE</strong></p>
 		<p>Subscription Expire Date: ".date("d-m-Y", strtotime($date_to_process))."</p>
-		<p>VPN Password: ".$password."</p>
-		<p>Please use the VPN Servers tab in the client area of the website to gain access to the VPN Server addresses.</p>
 		<p>Many Thanks</p>
-		<p>VPN View</p>";
+		<p></p>";
 		$message .= get_email_footer();
 		$send = wp_mail( $to, $subject, $message, '', null );
 	}
@@ -1072,8 +1068,11 @@ class WP_Subscription_Manger{
 		$first_name = get_user_meta($this->subscription_user->ID, 'first_name', true);		
 		$last_name = get_user_meta($this->subscription_user->ID, 'last_name', true);
 		$country_code = get_user_meta($this->subscription_user->ID, 'subscription_country_code', true);
-		$vpn_password = get_user_meta($this->subscription_user->ID, 'subscription_password', true);
 		$subscription_status = get_user_meta($this->subscription_user->ID, 'subscription_status', true);
+		$subscription_term = get_user_meta($this->subscription_user->ID, 'subscription_term', true);
+		$subscription_end = get_user_meta($this->subscription_user->ID, 'subscription_end', true);
+		$subscription_amount = get_user_meta($this->subscription_user->ID, 'subscription_amount', true);
+		$subscription_auto_renew = get_user_meta($this->subscription_user->ID, 'subscription_auto_renew', true);
 		$avatar_url = $this->get_users_avatar($this->subscription_user->ID);
 		$output = "<div class='filterform'>";
 		$output .= "<div class='filterform-left'><img src='".$avatar_url."' class='user_avatar' id='avatarimage'></div>";
@@ -1114,11 +1113,12 @@ class WP_Subscription_Manger{
 					$output .= "</tr>";
 					$output .= "<tr>";
 						$output .= "<th>Current Subscription Term</th><td>";
-						if(isset($this->current_subscription)){
+						/*if(isset($this->current_subscription)){
 							if($this->current_subscription->current_term != ""){
 								$output .= ucwords($this->current_subscription->current_term);
 							}
-						}
+						}*/
+						$output .= ucwords($subscription_term);
 						$output .= "</td>";
 					$output .= "</tr>";
 					$output .= "<tr>";
@@ -1131,9 +1131,10 @@ class WP_Subscription_Manger{
 								}
 							} else { $output .= "Subscription Expire Date"; }
 						$output .= "</th><td>";
-						if(isset($this->current_subscription)){
+						/*if(isset($this->current_subscription)){
 							$output .= date("d-m-Y", strtotime($this->current_subscription->date_to_process));
-						}
+						}*/
+						$output .= date("d-m-Y", strtotime($subscription_end));
 						$output .= "</td>";
 					$output .= "</tr>";
 					$output .= "<tr>";
@@ -1159,19 +1160,12 @@ class WP_Subscription_Manger{
 					}
 					$output .= "<tr>";
 						$output .= "<th>Subscription Price</th><td>";
-							if(isset($this->current_subscription)){
-								if(!empty($country_code)){
-									if($country_code['country_code'] == "GB"){ $output .= "&pound;"; } else { $output .= "&dollar;"; }
-									$output .= $this->current_subscription->amount;
-								}
+							if(isset($subscription_amount)){
+								$output .= "&pound;";
+								$output .= $subscription_amount;
 							}
 						$output .= "</td>";
 					$output .= "</tr>";
-					if($subscription_status != ""){
-						$output .= "<tr>";
-							$output .= "<th>VPN Password</th><td>".$vpn_password."</td>";
-						$output .= "</tr>";
-					}
 					$output .= "<tr>";
 						$output .= "<th>User Registered Date</th><td>".date("d-m-Y", strtotime($this->subscription_user->user_registered));
 						$output .= "</td>";
@@ -1305,13 +1299,13 @@ class WP_Subscription_Manger{
 	    		$output .= "<div class='clearfix'></div>";
 	    		$output .= "<p class='quiet'>To give a free term to a subscriber, please choose from the plans available below.</p><p><strong>Please Note</strong> that all free accounts are set to not autorenew as no payment was originally set to repeat the payment from.</p>";
     			$plans = get_field( 'plans', 'option' );
-    			foreach($plans as $plan){
+    			/*foreach($plans as $plan){
     				$output .= "<div class='plan'>
 						<h5>".$plan['plan_duration']."</h5>
 						<p><small>".$plan['plan_text']."</small></p>
 						<a href='#' class='btn btn-warning givefreesubscription_trigger' data-user_id='".$this->subscription_user->ID."' data-term='".$plan['plan_duration']."'>Give ".$plan['plan_duration']." Free</a>
     				</div>";
-    			}
+    			}*/
     			$output .= "<div class='clearfix'></div>";
 
     		$output .= "</div>";
@@ -1486,6 +1480,315 @@ class WP_Subscription_Manger{
 	}
 
 	public function wp_subscription_paypal_post_ipn($ipn_post, $entry, $feed, $cancel){
-		do_action( 'gform_sagepay_subscription_payment_success', $entry, $result[0]->id, $result[0]->Amount, false, $feed );
+		if ( $cancel ){
+    	    return;
+		}
+
+		$transaction_type = $ipn_post['txn_type'];
+
+		if ( strtolower( $transaction_type ) == 'subscr_eot' ) {
+			//This Instant Payment Notification is for a subscription's end of term.
+			$this->wp_subscription_subscription_cancelled( $entry, $entry[0]->id, $entry[0]->Amount, false, $feed );
+		}
+		if ( strtolower( $transaction_type ) == 'subscr_signup' ) {
+			//This Instant Payment Notification is for a subscription sign -up.
+			$this->wp_subscription_create_success( $entry, $entry[0]->id, $entry[0]->Amount, false, $feed );
+		}
+		if ( strtolower( $transaction_type ) == 'subscr_cancel' ) {
+			//This Instant Payment Notification is for a subscription cancellation.
+			$this->wp_subscription_subscription_cancelled( $entry, $entry[0]->id, $entry[0]->Amount, false, $feed );
+		}
+		if ( strtolower( $transaction_type ) == 'subscr_payment' ) {
+			//This Instant Payment Notification is for a subscription payment.
+			$this->wp_subscription_payment( $entry, $entry[0]->id, $entry[0]->Amount, false, $feed );
+		}
+		if ( strtolower( $transaction_type ) == 'subscr_failed' ) {
+			//This Instant Payment Notification is for a subscription payment failure.
+			$this->wp_subscription_failed_payment( $entry, $entry[0]->id, $entry[0]->Amount, false, $feed );
+		}		
+	}
+
+	public function wp_subscription_payment($entry, $transaction_id, $amount, $repeat = true, $feed){
+		$form_id = $entry['form_id'];
+		$form = GFAPI::get_form($form_id);
+		$field_ids = $this->get_subscription_field_ids($form);
+		$to = $entry[$field_ids['email_id']];
+		$password = $entry[$field_ids['password_id']];
+		//get name field details
+		$first_name = $entry[$field_ids["name_id"].".3"];
+		$last_name = $entry[$field_ids["name_id"].".6"];
+		// Place code here to be processed on successful payment.
+		$user = get_user_by('email', $to);
+		if($user){
+			$term = get_user_meta($user->ID, 'subscription_term', true);
+			$today = date("Y-m-d");
+			$date_to_process = $this->get_process_date($term);
+			$vars = array();
+			$vars['{first_name}'] = $first_name;
+			$vars['{last_name}'] = $last_name;
+			$vars['{subscription_term}'] = ucwords($term);
+			$vars['{subscription_amount}'] = $amount;
+			$vars['{subscription_renewal_date}'] = date("d-m-Y", strtotime($date_to_process));
+			$this->send_subscription_email($repeat, $to, $amount, true, $vars);
+		}
+	}
+
+	public function wp_subscription_create_success($entry, $transaction_id, $amount, $repeat = false, $feed){
+		$form_id = $entry['form_id'];
+		$form = GFAPI::get_form($form_id);
+		$field_ids = $this->get_subscription_field_ids($form);
+		$to = $entry[$field_ids['email_id']];
+		$password = $entry[$field_ids['password_id']];
+		//get name field details
+		$first_name = $entry[$field_ids["name_id"].".3"];
+		$last_name = $entry[$field_ids["name_id"].".6"];
+		// Place code here to be processed on successful payment.
+		$this->set_subscription_active($to, $password, $feed, $amount, $transaction_id, $first_name, $last_name, $repeat);
+	}
+
+	public function wp_subscription_failed_payment($entry, $transaction_id, $amount, $repeat = false, $feed){
+		$form_id = $entry['form_id'];
+		$form = GFAPI::get_form($form_id);
+		$field_ids = $this->get_subscription_field_ids($form);
+		$to = $entry[$field_ids['email_id']];
+		$password = $entry[$field_ids['password_id'].".1"];
+		// Place code here to be processed on failed payment.
+		$this->set_subscription_inactive($to, $password, $feed);
+	}
+
+	public function sagepay_subscription_cancel($entry, $transaction_id, $amount, $repeat = false, $feed){
+		global $wpdb;
+		global $table_prefix;
+		$to = $entry[$field_ids['email_id']];
+		$user_id = $this->check_user_exists_subscription($to, null, $to);
+		$user = get_user_by('id', $user_id);
+		//remove from the radius tables, send email and remove from the schedule
+		update_user_meta($user->ID, "subscription_status", "inactive");
+		$today = date("Y-m-d");
+		update_user_meta($user->ID, "subscription_end", $today);
+		$first_name = get_user_meta($user->ID, 'first_name', true);
+		$vars = array();
+		$vars['{first_name}'] = $first_name;
+		$vars['{subscription_expiration}'] = date("d-m-Y", strtotime($schedule->date_to_process));
+		$this->send_cancellation_email($user->user_email, $vars);
+	}
+
+	private function set_subscription_active($to, $password, $feed, $amount, $transaction_id, $first_name, $last_name, $repeat=false)
+	{
+		$user_exists = $this->check_user_exists_subscription($to, $password, $to);
+		if(!$user_exists){
+			echo "user_not exists";
+			$user_id = $this->register_new_user_subscription($to, $password, $to);
+			$user = get_user_by("ID", $user_id);
+		} else {
+			$user = get_user_by('email', $to);
+		}
+
+		global $wpdb;
+		global $table_prefix;
+
+		update_user_meta($user->ID, "subscription_status", "active");
+		update_user_meta($user->ID, 'first_name', $first_name );
+		update_user_meta($user->ID, 'last_name', $last_name );
+		update_user_meta($user->ID, 'subscription_amount', $amount);
+		update_user_meta($user->ID, 'subscription_auto_renew', 1);
+
+		$term = 'monthly';//get_subscription_term_from_feed($feed);
+		$today = date("Y-m-d");
+		$date_to_process = $this->get_process_date($term);
+
+		$wpdb->get_results("INSERT INTO rv_rg_sagestatus (status) VALUES ('date to process: ".$date_to_process."')");
+
+		update_user_meta($user->ID, "subscription_end", $date_to_process);
+		update_term_length($term, $user);
+
+		$vars = array();
+		$vars['{first_name}'] = $first_name;
+		$vars['{last_name}'] = $last_name;
+		$vars['{subscription_term}'] = ucwords($term);
+		$vars['{subscription_amount}'] = $amount;
+		$vars['{subscription_renewal_date}'] = date("d-m-Y", strtotime($date_to_process));
+
+		$this->send_subscription_email($repeat, $to, $amount, true, $vars);
+	}
+
+	private function set_subscription_inactive($to, $password, $feed)
+	{
+		$user_exists = $this->check_user_exists_subscription($to, $password, $to);
+		if(!$user_exists){
+			$user_id = $this->register_new_user_subscription($to, $password, $to);
+			$user = get_user_by("ID", $user_id);
+		} else {
+			$user = wp_get_current_user();
+		}
+		update_user_meta($user->ID, "subscription_status", "inactive");
+		$term = $this->get_subscription_term_from_feed($feed);
+		$today = date("Y-m-d");
+		update_user_meta($user->ID, "subscription_end", $today);
+		update_term_length($term, $user);
+		$vars = array();
+		$vars['{first_name}'] = $first_name;
+		$vars['{last_name}'] = $last_name;
+		$vars['{subscription_term}'] = ucwords($term);
+		$vars['{subscription_amount}'] = $amount;
+		$this->send_subscription_email($repeat, $to, $amount, false, $vars);
+	}
+
+	private function check_user_exists_subscription($user_name, $password, $user_email){
+		$user_id = username_exists( $user_name );
+		if ( $user_id ) {
+			return true;
+		}
+		return false;
+	}
+
+	private function register_new_user_subscription($user_name, $password, $user_email){
+		$user_id = wp_create_user( $user_name, $password, $user_email );
+		if($user_id){
+			return $user_id;
+		}
+		return false;
+	}
+
+	private function get_subscription_term_from_feed($feed)
+	{
+		$billing_cycle_unit = $feed['meta']['billingCycle_unit'];
+		$billing_cycle_length = $feed['meta']['billingCycle_length'];
+		if($billing_cycle_length == 1 && $billing_cycle_unit == "month"){
+			$term = "monthly";
+		} else if($billing_cycle_length == 6 && $billing_cycle_unit == "month"){
+			$term = "6monthly";
+		} else if($billing_cycle_length == 1 && $billing_cycle_unit == "year"){
+			$term = "yearly";
+		}
+		return $term;
+	}
+	
+	private function get_subscription_field_ids($form){
+		foreach($form['fields'] as $field){
+			if($field['label'] == "Name"){
+				$name_id = $field['id'];
+			}
+			if($field['label'] == "Email"){
+				$email_id = $field['id'];
+			}
+			if($field['label'] == "Password"){
+				$password_id = $field['id'];
+			}
+		}
+		return array("name_id"=>$name_id, "email_id"=>$email_id, "password_id"=>$password_id);
+	}
+
+	private function send_subscription_email($repeat, $to, $amount, $success, $vars)
+	{
+		if($repeat == true){ 
+			if($success == true){ $id = 37; } else { $id = 36; }
+		} else {
+			if($success == true){ $id = 35; } else { $id = 38; }
+		}		
+		$this->emailTemplateSend($id, $vars, $to);
+	}
+
+	private function send_cancellation_email($to, $vars){
+		$id = 40;
+		$this->emailTemplateSend($id, $vars, $to);
+	}
+
+	private function send_cancellation_warning_email($to, $vars){
+		$id = 41;
+		$this->emailTemplateSend($id, $vars, $to);
+	}
+
+	public function emailTemplateSend($id, $vars=null, $email){
+		$sql = "SELECT * FROM ".$this->table_prefix."email_templates WHERE id=".$id;
+		$template = $this->wpdb->get_results($sql)[0];
+		$content = (string)$template->body;
+		$subject = $template->subject;
+		$contentUnique = strtr($content, $vars);
+
+		add_filter( 'wp_mail_content_type', array($this, 'set_html_content_type') );
+		$to = $email;
+	    $message = $this->get_email_header();
+	    $message .= $contentUnique;
+		$message .= $this->get_email_footer();
+		$emailcontent = $message;
+	    $from = "info@property118.com";
+	    $headers = "From: ".$from;
+	    $subjectUnique = strtr($subject, $vars);
+	    if($to && $subjectUnique && $emailcontent && $headers) {
+	        wp_mail($to,$subjectUnique,$emailcontent);
+	    }
+	    remove_filter( 'wp_mail_content_type', array($this, 'set_html_content_type') ); 
+	}
+
+	private function set_html_content_type()
+	{
+		return 'text/html';
+	}
+
+	private function get_email_header(){
+		$header = "<table style='width:100%;border-bottom: 1px solid #d4d4d4;' class='' align='center' border='0' cellpadding='0' cellspacing='0'>
+		    <tbody>
+		        <tr>
+		            <td align='center' style='background-color: #fff;'>
+		                <table style='width: 600px;' cellpadding='0' cellspacing='0'>
+		                    <tbody>
+		                        <tr>
+		                            <td style='padding:20px;'>
+		                                <a href='".get_option(' siteurl ')."' style='display:block; border:none;'>
+		                                	<img src='".get_template_directory_uri()."/images/logo.png' width='295px'  style='display:block; border:none; margin:10px;'>
+		                            	</a>
+		                            </td>
+		                        </tr>
+		                    </tbody>
+		                </table>
+		            </td>
+		        </tr>
+		    </tbody>
+		</table>
+		<br/>
+		<table style='width: 560px;background: #fff;padding: 20px;' class='' align='center' border='0' cellpadding='0' cellspacing='0'>
+		    <tbody>
+		        <tr>
+		            <td align='center'>
+		                <table style='width: 560px;' border='0' cellpadding='0' cellspacing='0'>
+		                    <tbody>
+		                        <tr>
+		                            <td>";
+		return $header;
+	}
+
+	private function get_email_footer(){
+		$footer = "<br/>
+		</td>
+		</tr>
+		</tbody>
+		</table>
+		</td>
+		</tr>
+		</tbody>
+		</table>
+		<table style='width:100%;' class='' align='center' border='0' cellpadding='0' cellspacing='0'>
+		    <tbody>
+		        <tr>
+		            <td align='center' style='background-color: #4186c6;'>
+		                <table style='width: 600px;' border='0' cellpadding='0' cellspacing='0'>
+		                    <tbody>
+		                        <tr>
+		                            <td style='padding:5px 20px 15px 20px;'>
+		                                <p style='font-family:Arial, sans-serif; line-height: 18px; font-size:12px; margin:0; padding:0; color:#ffffff;'>&copy;
+		                                    <?= date('Y');?> <a href='".get_option(' siteurl ')."' style='color:#fff; text-decoration:none;'>SubRec</a></p>
+		                            </td>
+		                            <td style='padding:5px 20px 15px 20px;' align='right'>
+		                                
+		                            </td>
+		                        </tr>
+		                    </tbody>
+		                </table>
+		            </td>
+		        </tr>
+		    </tbody>
+		</table>";
+		return $footer;
 	}
 }

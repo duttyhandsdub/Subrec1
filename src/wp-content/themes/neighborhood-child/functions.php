@@ -86,15 +86,15 @@
 
 	======================================================================================================================== */
 
-	function vpnview_scripts() {
+	function subrec_scripts() {
 
 		if ( is_page_template('page-client_area_my_subscription.php') ) {
-			wp_register_script( 'vpnview-my_subscription_script', get_template_directory_uri() . '/js/subscription_details.js', array( 'jquery' ) );
-			wp_enqueue_script( 'vpnview-my_subscription_script' );
+			wp_register_script( 'subrec-my_subscription_script', get_template_directory_uri() . '/js/subscription_details.js', array( 'jquery' ) );
+			wp_enqueue_script( 'subrec-my_subscription_script' );
 		}
 	}
 	
-	add_action( 'wp_enqueue_scripts', 'vpnview_scripts' );
+	add_action( 'wp_enqueue_scripts', 'subrec_scripts' );
 
 
 	/* ========================================================================================================================
@@ -182,8 +182,6 @@
 		global $table_prefix;
 		$user = get_user_by('id', $schedule->user_id);
 		//remove from the radius tables, send email and remove from the schedule
-		$radius_user_id = get_user_meta($user->ID, 'radius_user_id', true);
-		delete_from_radius($user, $radius_user_id);
 		update_user_meta($user->ID, "subscription_status", "inactive");
 		$today = date("Y-m-d");
 		update_user_meta($user->ID, "subscription_end", $today);
@@ -214,298 +212,6 @@
 		//code to add here for send to radius
 	}
 
-	add_action('gform_sagepay_subscription_payment_failed', 'sagepay_failed_payment', 10, 5);
-
-	function sagepay_failed_payment($entry, $transaction_id, $amount, $repeat = false, $feed){
-		$form_id = $entry['form_id'];
-		$form = GFAPI::get_form($form_id);
-		$field_ids = get_subscription_field_ids($form);
-		$to = $entry[$field_ids['email_id']];
-		$password = $entry[$field_ids['password_id'].".1"];
-		// Place code here to be processed on failed payment.
-		set_subscription_inactive($to, $password, $feed);
-		update_user_country($user);
-		//code to add here for send to radius
-	}
-
-	add_action('gform_sagepay_subscription_payment_repeat_success', 'sagepay_success_repeat_payment', 10, 5);
-
-	function sagepay_success_repeat_payment($entry, $transaction_id, $amount, $repeat = true, $feed){
-		$form_id = $entry['form_id'];
-		$form = GFAPI::get_form($form_id);
-		$field_ids = get_subscription_field_ids($form);
-		$to = $entry[$field_ids['email_id']];
-		$password = $entry[$field_ids['password_id']];
-		//get name field details
-		$first_name = $entry[$field_ids["name_id"].".3"];
-		$last_name = $entry[$field_ids["name_id"].".6"];
-		// Place code here to be processed on successful payment.
-		$user = get_user_by('email', $to);
-		if($user){
-			$term = get_user_meta($user->ID, 'subscription_term', true);
-			$today = date("Y-m-d");
-			$date_to_process = get_process_date($term);
-			$vars = array();
-			$vars['{first_name}'] = $first_name;
-			$vars['{last_name}'] = $last_name;
-			$vars['{subscription_term}'] = ucwords($term);
-			$vars['{subscription_amount}'] = $amount;
-			$vars['{subscription_renewal_date}'] = date("d-m-Y", strtotime($date_to_process));
-			$vars['{vpn_password}'] = $password;
-			send_subscription_email($repeat, $to, $amount, true, $vars);
-			$radius_details = get_radius_details();
-			$radius = new wpdb($radius_details['radius_user'],$radius_details['radius_password'],$radius_details['radius_database_name'],$radius_details['radius_host']);
-			///dont forget to update the radius userpayments table to show that the payment has been taken.
-			$radius_user_id = get_user_meta($user->ID, 'radius_user_id', true);
-			$sql_radius_userpayments = "UPDATE userpayments SET Deferred=0, LastPaymentDate=NOW(), NextPaymentDate='".$date_to_process."' WHERE UserID=".$radius_user_id;
-			$radius->get_results($sql_radius_userpayments);
-			global $wpdb;
-			global $table_prefix;
-			$sql = "SELECT * FROM ".$table_prefix."rg_sagepay_schedule WHERE user_id='".$user->id."'";
-			$res = $wpdb->get_results($sql)[0];
-			$radius_user_id = get_user_meta($user->ID, "radius_user_id", true);
-			update_radius($user, $term, $today, $date_to_process, $amount, $radius_user_id);			
-		}
-	}
-
-	add_action('gform_sagepay_subscription_payment_repeat_failed', 'sagepay_failed_repeat_payment', 10, 5);
-
-	function sagepay_failed_repeat_payment($entry, $transaction_id, $amount, $repeat = true, $feed){
-		$form_id = $entry['form_id'];
-		$form = GFAPI::get_form($form_id);
-		$field_ids = get_subscription_field_ids($form);
-		$to = $entry[$field_ids['email_id']];
-		$password = $entry[$field_ids['password_id'].".1"];
-		$user = get_user_by('email', $to);
-		if($user){
-			$term = get_subscription_term_from_feed($feed);
-			$today = date("Y-m-d");
-			$date_to_process = get_process_date($term);
-			$vars = array();
-			$vars['{first_name}'] = $first_name;
-			$vars['{last_name}'] = $last_name;
-			$vars['{subscription_term}'] = ucwords($term);
-			$vars['{subscription_amount}'] = $amount;
-			$vars['{subscription_renewal_date}'] = date("d-m-Y", strtotime($date_to_process));
-			$vars['{vpn_password}'] = $password;
-			send_subscription_email($repeat, $to, $amount, false, $vars);
-		}
-	}
-
-
-	//SAGEPAY HOOK EXTRA FUNCTIONS
-	function get_process_date($term){
-		$today = date("Y-m-d");
-		if($term == "monthly"){
-			$date_to_process = date('Y-m-d', strtotime("+1 month", strtotime($today)));
-		} else if($term == "6monthly"){
-			$date_to_process = date('Y-m-d', strtotime("+6 month", strtotime($today)));
-		} else if($term == "yearly"){
-			$date_to_process = date('Y-m-d', strtotime("+1 year", strtotime($today)));
-		}
-		return $date_to_process;
-	}
-
-	function insert_into_radius($user, $first_name, $last_name, $password, $term, $today, $date_to_process, $amount){
-		$radius_details = get_radius_details();
-		$radius = new wpdb($radius_details['radius_user'],$radius_details['radius_password'],$radius_details['radius_database_name'],$radius_details['radius_host']);
-		//radcheck table entry
-		$sql_radius_radcheck = "INSERT INTO radcheck (username, attribute, op, value) VALUES ('".$user->user_email."', 'User-Password', '==', '".$password."')";
-		$radius->get_results($sql_radius_radcheck);
-		//now we must do the user entry... THIS IS IMPORTANT THAT THIS HAPPENS HERE AS THE REST OF THE CALLS NEED THE INSERT ID FOR 
-		//FOREIGN KEY CONSTRAINTS
-		$sql_radius_user = "INSERT INTO user (Name, Email, Registered, lastUpdate) VALUES ('".$first_name." ".$last_name."', '".$user->user_email."', '".date("Y-m-d G:i:s")."', '".date("Y-m-d G:i:s")."')";
-		$radius->get_results($sql_radius_user);
-		$radius_user_id = $radius->insert_id;
-		//useraccess entry
-		$sql_radius_useraccess = "INSERT INTO useraccess (Allowed, Username, Password, UserID) VALUES ('1', '".$user->user_email."', '".$password."', '".$radius_user_id."')";
-		$radius->get_results($sql_radius_useraccess);
-		//usernomalduration entry
-		$sql_radius_usernormalduration = "INSERT INTO usernormalduration (UserID, Duration) VALUES ('".$radius_user_id."','".convertPackageName($term)."')";
-		$radius->get_results($sql_radius_usernormalduration);
-		//userpayments entry
-		$sql_radius_userpayments = "INSERT INTO userpayments (UserID, HasVPNAccess, LastPaymentDate, NextPaymentDate, PaymentAmount, PackageName, PackageDuration, CancelThisTime, Deferred) VALUES ('".$radius_user_id."', 1, '".$today."', '".$date_to_process."', '".$amount."', 'pro', '".convertPackageName($term)."', 0, 0)";
-		$radius->get_results($sql_radius_userpayments);
-		//firstmonth entry
-		$sql_radius_firstmonth = "INSERT INTO firstmonth (UserID, Amount) VALUES ('".$radius_user_id."', '".$amount."')";
-		$radius->get_results($sql_radius_firstmonth);
-		//radusersgroup entry
-		$sql_radius_radusersgroup = "INSERT INTO radusergroup (username, groupname) VALUES ('".$user->user_email."', 'pro')";
-		$radius->get_results($sql_radius_radusersgroup);
-		return $radius_user_id;
-	}
-
-	function update_radius($user, $term, $today, $date_to_process, $amount, $radius_user_id){
-		$radius_details = get_radius_details();
-		$radius = new wpdb($radius_details['radius_user'],$radius_details['radius_password'],$radius_details['radius_database_name'],$radius_details['radius_host']);
-
-		//usernomalduration entry
-		$sql_radius_usernormalduration = "UPDATE usernormalduration SET Duration='".convertPackageName($term)."' WHERE UserID='".$radius_user_id."'";
-		$radius->get_results($sql_radius_usernormalduration);
-		//userpayments entry
-		$sql_radius_userpayments = "UPDATE userpayments SET LastPaymentDate='".$today."', NextPaymentDate='".$date_to_process."', PaymentAmount='".$amount."', PackageDuration='".convertPackageName($term)."' WHERE UserID='".$radius_user_id."'";
-		$radius->get_results($sql_radius_userpayments);
-	}
-
-	function delete_from_radius($user, $radius_user_id){
-		$radius_details = get_radius_details();
-		$radius = new wpdb($radius_details['radius_user'],$radius_details['radius_password'],$radius_details['radius_database_name'],$radius_details['radius_host']);
-		//radcheck table entry
-		$sql_radius_radcheck = "DELETE FROM radcheck WHERE username='".$user->user_email."'";
-		$radius->get_results($sql_radius_radcheck);
-		//useraccess entry
-		$sql_radius_useraccess = "DELETE FROM useraccess WHERE Username='".$user->user_email."'";
-		$radius->get_results($sql_radius_useraccess);
-		//usernomalduration entry
-		$sql_radius_usernormalduration = "DELETE FROM usernormalduration WHERE UserID='".$radius_user_id."'";
-		$radius->get_results($sql_radius_usernormalduration);
-		//userpayments entry
-		$sql_radius_userpayments = "DELETE FROM userpayments WHERE UserID='".$radius_user_id."'";
-		$radius->get_results($sql_radius_userpayments);
-		//firstmonth entry
-		$sql_radius_firstmonth = "DELETE FROM firstmonth WHERE UserID='".$radius_user_id."'";
-		$radius->get_results($sql_radius_firstmonth);
-		//radusersgroup entry
-		$sql_radius_radusersgroup = "DELETE FROM radusergroup WHERE username='".$user->user_email."'";
-		$radius->get_results($sql_radius_radusersgroup);
-
-		//$sql_radius_user = "DELETE FROM user WHERE is='".$radius_user_id."'";
-		//$radius->get_results($sql_radius_user);
-	}
-
-	function send_subscription_email($repeat, $to, $amount, $success, $vars)
-	{
-		if($repeat == true){ 
-			if($success == true){ $id = 37; } else { $id = 36; }
-		} else {
-			if($success == true){ $id = 35; } else { $id = 38; }
-		}		
-		emailTemplateSend($id, $vars, $to);
-	}
-
-	function send_cancellation_email($to, $vars){
-		$id = 40;
-		emailTemplateSend($id, $vars, $to);
-	}
-
-	function send_cancellation_warning_email($to, $vars){
-		$id = 41;
-		emailTemplateSend($id, $vars, $to);
-	}
-
-	function get_subscription_term_from_feed($feed)
-	{
-		$billing_cycle_unit = $feed['meta']['billingCycle_unit'];
-		$billing_cycle_length = $feed['meta']['billingCycle_length'];
-		if($billing_cycle_length == 1 && $billing_cycle_unit == "month"){
-			$term = "monthly";
-		} else if($billing_cycle_length == 6 && $billing_cycle_unit == "month"){
-			$term = "6monthly";
-		} else if($billing_cycle_length == 1 && $billing_cycle_unit == "year"){
-			$term = "yearly";
-		}
-		return $term;
-	}
-
-	function update_term_length($term, $user){
-		if($term == "monthly"){
-			update_user_meta($user->ID, "subscription_term", "monthly");
-		} else if($term == "6monthly"){
-			update_user_meta($user->ID, "subscription_term", "6 monthly");
-		} else if($term == "yearly"){
-			update_user_meta($user->ID, "subscription_term", "yearly");
-		}
-	}
-
-	function get_subscription_field_ids($form){
-		foreach($form['fields'] as $field){
-			if($field['label'] == "Name"){
-				$name_id = $field['id'];
-			}
-			if($field['label'] == "Email"){
-				$email_id = $field['id'];
-			}
-			if($field['label'] == "Password"){
-				$password_id = $field['id'];
-			}
-		}
-		return array("name_id"=>$name_id, "email_id"=>$email_id, "password_id"=>$password_id);
-	}
-
-	function set_subscription_active($to, $password, $feed, $amount, $transaction_id, $first_name, $last_name, $repeat=false)
-	{
-		$radius_details = get_radius_details();
-		$radius = new wpdb($radius_details['radius_user'],$radius_details['radius_password'],$radius_details['radius_database_name'],$radius_details['radius_host']);
-		$user_exists = check_user_exists_subscription($to, $password, $to);
-		if(!$user_exists){
-			echo "user_not exists";
-			$user_id = register_new_user_subscription($to, $password, $to);
-			$user = get_user_by("ID", $user_id);
-		} else {
-			$user = get_user_by('email', $to);
-		}
-
-		global $wpdb;
-		global $table_prefix;
-		$sql_schedule_select = "SELECT * FROM ".$table_prefix."rg_sagepay_schedule WHERE old_transaction_id='".$transaction_id."'";
-		$res_schedule = $wpdb->get_results($sql_schedule_select)[0];
-		$sql_schedule_update_user_id = "UPDATE ".$table_prefix."rg_sagepay_schedule SET user_id='".$user->ID."' WHERE id='".$res_schedule->id."'";
-		$wpdb->get_results($sql_schedule_update_user_id);
-
-		update_user_meta($user->ID, "subscription_status", "active");
-		update_user_meta($user->ID, 'first_name', $first_name );
-		update_user_meta($user->ID, 'last_name', $last_name );
-
-		$term = get_subscription_term_from_feed($feed);
-		$today = date("Y-m-d");
-		$date_to_process = get_process_date($term);
-		update_user_meta($user->ID, "subscription_end", $date_to_process);
-		update_term_length($term, $user);
-		$password = generateStrongPassword(10, false, 'luds');
-
-		$radius_user_id = insert_into_radius($user, $first_name, $last_name, $password, $term, $today, $date_to_process, $amount);
-
-		update_user_meta($user->ID, "subscription_password", $password);
-		update_user_meta($user->ID, "radius_user_id", $radius_user_id);
-
-		$vars = array();
-		$vars['{first_name}'] = $first_name;
-		$vars['{last_name}'] = $last_name;
-		$vars['{subscription_term}'] = ucwords($term);
-		$vars['{subscription_amount}'] = $amount;
-		$vars['{subscription_renewal_date}'] = date("d-m-Y", strtotime($date_to_process));
-		$vars['{vpn_password}'] = $password;
-
-		send_subscription_email($repeat, $to, $amount, true, $vars);
-
-		update_user_country($user);
-	}
-
-	function set_subscription_inactive($to, $password, $feed)
-	{
-		$user_exists = check_user_exists_subscription($to, $password, $to);
-		if(!$user_exists){
-			$user_id = register_new_user_subscription($to, $password, $to);
-			$user = get_user_by("ID", $user_id);
-		} else {
-			$user = wp_get_current_user();
-		}
-		update_user_meta($user->ID, "subscription_status", "inactive");
-		$term = get_subscription_term_from_feed($feed);
-		$today = date("Y-m-d");
-		update_user_meta($user->ID, "subscription_end", $today);
-		update_term_length($term, $user);
-		$radius_user_id = get_user_meta($user->ID, 'radius_user_id', true);
-		delete_from_radius($user, $radius_user_id);
-		$vars = array();
-		$vars['{first_name}'] = $first_name;
-		$vars['{last_name}'] = $last_name;
-		$vars['{subscription_term}'] = ucwords($term);
-		$vars['{subscription_amount}'] = $amount;
-		send_subscription_email($repeat, $to, $amount, false, $vars);
-		update_user_country($user);
-	}
-
 	function update_user_country($user){
 		$country = ip_info("Visitor", "Country"); 
 		$country_code = ip_info("Visitor", "Country Code"); 
@@ -513,38 +219,7 @@
 		update_user_meta($user->ID, "subscription_country_code", $country_code);
 	}
 
-	function check_user_exists_subscription($user_name, $password, $user_email){
-		$user_id = username_exists( $user_name );
-		if ( $user_id ) {
-			return true;
-		}
-		return false;
-	}
-
-	function register_new_user_subscription($user_name, $password, $user_email){
-		$user_id = wp_create_user( $user_name, $password, $user_email );
-		if($user_id){
-			return $user_id;
-		}
-		return false;
-	}
-
-	function update_radius_email($email, $old_email){
-		$radius_details = get_radius_details();
-		$radius = new wpdb($radius_details['radius_user'],$radius_details['radius_password'],$radius_details['radius_database_name'],$radius_details['radius_host']);
-		$sql = "SELECT * FROM radcheck WHERE username='".$old_email."'";
-		$radcheckentry = $radius->get_results($sql)[0];
-		$radaffected = $radius->update("radcheck",array('username'=>$email),array('id'=>$radcheckentry->id));
-		$radugaffected = $radius->update("radusergroup",array('username'=>$email),array('username'=>$old_email));
-		$usertable = $radius->update("user",array('Email'=>$email),array('email'=>$old_email));
-		$useraccesstable = $radius->update("useraccess",array('Username'=>$email),array('Username'=>$old_email));
-
-		if ( false === $radaffected || false === $radugaffected || false === $usertable || false === $useraccesstable){
-			return false;
-		} else {
-			return true;
-		}
-	}
+	
 
 	function convertPackageName($value){
 		if($value == "monthly"){ return "1M"; }
@@ -559,23 +234,6 @@
 		if(trim($value) == "1 month"){ return "monthly"; }
 		if(trim($value) == "6 months"){ return "6 monthly"; }
 		if(trim($value) == "12 months"){ return "yearly"; }		
-	}
-
-	function get_radius_details(){
-		$radius_user = get_field('options_radius_db_user', 'option');
-		//RADIUS_DB_USER;
-		$radius_password = get_field('options_radius_db_password', 'option');
-		//RADIUS_DB_PASSWORD;
-		$radius_database_name = get_field('options_radius_db_name', 'option');
-		//RADIUS_DB_NAME;
-		$radius_host = get_field('options_radius_db_host', 'option');
-		//RADIUS_DB_HOST;
-		return array(
-			'radius_user'=>$radius_user,
-			'radius_password'=>$radius_password,
-			'radius_database_name'=>$radius_database_name,
-			'radius_host'=>$radius_host,
-		);
 	}
 
 	function getPaymentHistory(){
@@ -634,8 +292,6 @@
 		//$affected = $wpdb->delete($table_prefix."rg_sagepay_schedule",array('id'=>$res->id));
 		$affected = $wpdb->update($table_prefix."rg_sagepay_schedule",array('status'=>'Cancelled', 'processed'=>1),array('id'=>$res->id));
 		update_user_meta($user->ID, "subscription_status", "cancelled");
-		$radius_user_id = get_user_meta($user->ID, 'radius_user_id', true);
-		delete_from_radius($user, $radius_user_id);
 		$first_name = get_user_meta($user->ID, 'first_name', true);
 		$vars = array();
 		$vars['{first_name}'] = $first_name;
@@ -676,7 +332,6 @@
 		$new_term = convertTerm($_POST['new_term']);
 		$old_term = get_user_meta($user->ID, 'subscription_term', true);
 		
-		$radius_user_id = get_user_meta($user->ID, 'radius_user_id', true);
 		$sql = "SELECT * FROM ".$table_prefix."rg_sagepay_schedule WHERE user_id='".$user->id."' AND processed=0 ORDER BY id DESC";
 		$res = $wpdb->get_results($sql)[0];
 		$affected = $wpdb->update($table_prefix."rg_sagepay_schedule",array('upgrade_term'=>$new_term, 'upgrade_on_expire'=>1),array('id'=>$res->id));
@@ -699,7 +354,6 @@
 		$new_term = convertTerm($_POST['new_term']);
 		$old_term = get_user_meta($user->ID, 'subscription_term', true);
 		
-		$radius_user_id = get_user_meta($user->ID, 'radius_user_id', true);
 		$sql = "SELECT * FROM ".$table_prefix."rg_sagepay_schedule WHERE user_id='".$user->id."' AND processed=0 ORDER BY id DESC";
 		$res = $wpdb->get_results($sql)[0];
 		$affected = $wpdb->update($table_prefix."rg_sagepay_schedule",array('upgrade_term'=>$new_term, 'upgrade_on_expire'=>1),array('id'=>$res->id));
@@ -906,4 +560,6 @@
 		}
 	    return $default;
 	}
+
+	include("email_template_functions.php");
 ?>

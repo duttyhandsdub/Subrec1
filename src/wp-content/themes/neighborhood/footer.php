@@ -1,4 +1,4 @@
-<?php
+				<?php
 							$options = get_option('sf_neighborhood_options');
 							$enable_footer = $options['enable_footer'];
 							$enable_footer_divider = $options['enable_footer_divider'];

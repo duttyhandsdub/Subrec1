@@ -32,8 +32,6 @@ if ( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POS
             $error["email"] = 'This email is already used by another user.  try a different one.';
         else{
             wp_update_user( array ('ID' => $current_user->ID, 'user_email' => esc_attr( $_POST['email'] )));
-            //we need to update radius here.... or they will have differing radius/wp logins.
-            update_radius_email(esc_attr($_POST['email']), $old_email);
         }
     }
 

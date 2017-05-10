@@ -6,15 +6,8 @@ app:
     - "80:80"
   volumes:
     - ./src:/var/www/html
+    - ./docker/php.ini:/usr/local/etc/php/php.ini
     - ./docker/wp-config.php:/var/www/html/wp-config.php
-ngrok:
-    image: fnichol/ngrok
-    environment:
-      - HTTP_PORT=apptarget:80
-    links:
-      - app:apptarget
-    ports:
-      - "4040:4040"
 mail:
   image: "mailhog/mailhog:latest"
   ports:

@@ -19,6 +19,8 @@ RUN         a2enmod rewrite
 ADD         run.sh /run.sh
 RUN         chmod 755 /*.sh
 RUN         usermod -u 1000 www-data
+RUN 		touch /var/log/php_errors.log
+RUN 		chmod 777 /var/log/php_errors.log
 
 EXPOSE      80
 CMD         ["/run.sh"]
