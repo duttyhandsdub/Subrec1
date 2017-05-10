@@ -281,6 +281,23 @@
 					<!--// OPEN .pb-fw-wrap //-->
 					<div class="pb-fw-wrap">
 					<?php } else { ?>
+					<?php	
+					$bannerImage = get_field( 'banner_image' );
+					if( !empty($bannerImage) ):
+					?>
+						<div class="banner">
+							<img class="banner-image" src="<?php echo $bannerImage['url']; ?>" alt="<?php echo $bannerImage['alt']; ?>" class="img-responsive" />
+							<div class="banner-title">
+								<div class="container_el">
+									<div class="row">
+										<div class="col-xs-15">
+											<?php the_field( 'banner_text' ); ?>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					<?php endif; ?>
 					<!--// OPEN .container //-->
 					<div class="container">
 				<?php } ?>
