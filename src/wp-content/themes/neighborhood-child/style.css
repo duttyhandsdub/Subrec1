@@ -84,9 +84,47 @@ h2{font-size: 24px !important; line-height:34px !important;}
 h3.jimpacttext{font-size: 24px !important; line-height:34px !important;}
 
 }
+.banner{
+    position: relative;
+}
+.banner img.banner-image {
+    width: 100%;
+}
+.banner .banner-title {
+    position: absolute;
+    top: 90px;
+    width: 100%;
+}
+.banner .banner-title p {
+    font-size: 45px;
+    line-height: 1.14;
+    text-shadow: 0 0 6px #1b1b1b;
+}
+.banner .banner-title p, footer p {
+    color: #fff;
+    text-align: right;
+    font-weight: 700;
+}
+.container_el, .container_el-fluid {
+    margin-right: auto;
+    margin-left: auto;
+    padding-left: 10px;
+    padding-right: 10px;
+}
 
 
-
-
-
-
+@media (min-width: 768px){
+	.container_el {
+	    width: 750px;
+	}
+}
+@media (min-width: 1000px){
+	.container_el {
+	    width: 975px;
+	}
+}
+@media (min-width: 1265px){
+	.container_el {
+	    width: 1200px;
+	}
+}
